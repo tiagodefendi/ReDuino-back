@@ -1,3 +1,4 @@
+
 const { Client } = require('pg');
 const dotenv = require('dotenv');
 const { SerialPort } = require('serialport');
@@ -10,7 +11,7 @@ dotenv.config();
 
 // ----------------------------------------------------
 // Configurações
-const PORT_NAME = process.env.SERIAL_PORT || '/dev/ttyUSB0'; // "COM3" no Windows
+const PORT_NAME = process.env.SERIAL_PORT || 'COM3'; // "COM3" no Windows
 const BAUD_RATE = 115200;
 const NEON_DATABASE_URL = process.env.DATABASE_URL;
 const HTTP_PORT = process.env.PORT || 3001;
@@ -28,7 +29,7 @@ const SENSOR_NODE_ID = process.env.SENSOR_NODE_ID || '47';
 // ----------------------------------------------------
 let dbClient = null;
 let isSystemActive = false; // Controlado pelo botão de liga/desliga do front
-let lastDistance = 200;     // Última distância lida (cm)
+let lastDistance = 80;      // Última distância lida (cm) — cap em 80cm (limite real do sensor)
 let lastUpdated = null;     // Timestamp da última leitura
 
 // ----------------------------------------------------
@@ -109,8 +110,8 @@ function startSerialMonitor() {
       if (identificador === SENSOR_NODE_ID) {
         const distancia = parseInt(mensagem, 10);
 
-        if (!isNaN(distancia) && distancia >= 0 && distancia <= 400) {
-          lastDistance = distancia;
+        if (!isNaN(distancia) && distancia >= 0) {
+          lastDistance = Math.min(distancia, 80);
           lastUpdated = new Date().toISOString();
           console.log(`📏 Distância atualizada: ${distancia} cm`);
         } else {
@@ -135,7 +136,7 @@ function startWebServer() {
   const app = express();
 
   app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
   }));
@@ -242,10 +243,10 @@ function startWebServer() {
  * para manter consistência entre back e front.
  */
 function buildSensorState(dist) {
-  if (dist > 120) return { alert: 'safe',   statusText: 'SEGURO',  beepsPerSec: '1' };
-  if (dist > 60)  return { alert: 'warn',   statusText: 'ATENÇÃO', beepsPerSec: '3' };
-  if (dist > 25)  return { alert: 'danger', statusText: 'PERIGO',  beepsPerSec: '8' };
-  return             { alert: 'danger', statusText: 'COLISÃO!', beepsPerSec: '∞' };
+  if (dist > 55)  return { alert: 'safe',   statusText: 'SEGURO',  beepsPerSec: '1' };
+  if (dist > 30)  return { alert: 'warn',   statusText: 'ATENÇÃO', beepsPerSec: '3' };
+  if (dist > 15)  return { alert: 'danger', statusText: 'PERIGO',  beepsPerSec: '8' };
+  return               { alert: 'danger', statusText: 'COLISÃO!', beepsPerSec: '∞' };
 }
 
 // ----------------------------------------------------
