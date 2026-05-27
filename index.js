@@ -12,7 +12,7 @@ dotenv.config();
 // ----------------------------------------------------
 // Configurações
 const PORT_NAME = process.env.SERIAL_PORT || 'COM3'; // "COM3" no Windows
-const BAUD_RATE = 115200;
+const BAUD_RATE = 19200;
 const NEON_DATABASE_URL = process.env.DATABASE_URL;
 const HTTP_PORT = process.env.PORT || 3001;
 // ----------------------------------------------------
@@ -243,7 +243,7 @@ function startWebServer() {
  * para manter consistência entre back e front.
  */
 function buildSensorState(dist) {
-  if (dist > 55)  return { alert: 'safe',   statusText: 'SEGURO',  beepsPerSec: '1' };
+  if (dist > 45)  return { alert: 'safe',   statusText: 'SEGURO',  beepsPerSec: '1' };
   if (dist > 30)  return { alert: 'warn',   statusText: 'ATENÇÃO', beepsPerSec: '3' };
   if (dist > 15)  return { alert: 'danger', statusText: 'PERIGO',  beepsPerSec: '8' };
   return               { alert: 'danger', statusText: 'COLISÃO!', beepsPerSec: '∞' };
