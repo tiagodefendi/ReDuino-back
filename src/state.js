@@ -1,5 +1,5 @@
 const state = {
-  isSystemActive: false,
+  isSystemActive: true,
   lastDistance:   80,
   lastUpdated:    null,
 };
