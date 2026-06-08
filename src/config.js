@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 module.exports = {
-  PORT_NAME:        process.env.SERIAL_PORT    || '/dev/ttyUSB0',
+  PORT_NAME:        process.env.SERIAL_PORT    || 'COM6',
   BAUD_RATE:        19200,
   DATABASE_URL:     process.env.DATABASE_URL,
   HTTP_PORT:        process.env.PORT           || 3001,

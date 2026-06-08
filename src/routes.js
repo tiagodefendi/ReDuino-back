@@ -6,17 +6,16 @@ const state = require('./state');
 const router = Router();
 
 router.get('/status', (req, res) => {
-  const sensorState = state.isSystemActive
-    ? buildSensorState(state.lastDistance)
-    : { alert: 'idle', statusText: '--', beepsPerSec: '--' };
+  const sensorState = buildSensorState(state.lastDistance);
 
   res.json({
-    active:      state.isSystemActive,
-    distance:    state.isSystemActive ? state.lastDistance : null,
+    active:      true,
+    distance:    state.lastDistance,
     alert:       sensorState.alert,
     statusText:  sensorState.statusText,
     beepsPerSec: sensorState.beepsPerSec,
     updatedAt:   state.lastUpdated,
+    canal:       state.canalAtual,
   });
 });
 
