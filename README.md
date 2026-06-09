@@ -1,185 +1,99 @@
-# ReDuino — Sistema IoT de Sensor de Ré
+# ReDuino — Back-end
 
-Sistema de sensor de ré com Arduino Nano, nRF24L01 e HC-SR04, com dashboard web em Next.js.
-
----
-
-## Arquitetura
-
-[Sensor HC-SR04]               [Atuador Buzzer/LED]
-      │                               │
-[Arduino Sensor]  ── nRF24 ──  [Arduino Atuador]
-      │
-[Arduino Gateway] ── USB/Serial ── [Node.js Back]
-                                         │
-                                   [Next.js Front]
-                                         │
-                                    [Smartphone/Browser]
+> Servidor Node.js que faz a ponte entre o Arduino Gateway (serial USB) e o dashboard web do sistema de sensor de ré ReDuino.
 
 ---
 
-## Repositórios
+## Visão Geral
 
-| Repo | Conteúdo |
-|------|----------|
-| `ReDuino-Front` | Dashboard Next.js
-| `ReDuino-Back`  | Servidor Node.js (este)
-| `ReDuino-IoT`   | Sketches Arduino
+O **ReDuino-back** é a camada de integração do projeto ReDuino: ele lê os pacotes enviados pelo Arduino Gateway via porta serial, mantém o estado atual do sistema (distância, alertas, ativação) e expõe uma API REST para o front-end Next.js consumir.
 
----
-
-## ReDuino-Back (Node.js)
-
-### Pré-requisitos
-
-- Node.js >= 18
-- Arduino Nano (gateway) conectado via USB
-
-### Instalação
-
-```bash
-npm install
-cp .env.example .env
-# edite o .env com suas configurações
+```
+[HC-SR04 Sensor]                         [Buzzer / LEDs]
+      │                                         │
+[Arduino Sensor ID=47] ──── nRF24L01 ────  [Arduino Atuador ID=60]
+                                  │
+                       [Arduino Gateway ID=30]
+                                  │ USB / Serial (19200 baud)
+                         [Node.js Back-end]  ◄── este repositório
+                                  │ REST API
+                          [Next.js Front-end]
+                                  │
+                        [Smartphone / Browser]
 ```
 
-### Configuração (.env)
+### Repositórios do projeto
 
-| Variável | Descrição | Padrão |
-| `DATABASE_URL` | URL PostgreSQL Neon | — |
-| `SERIAL_PORT` | Porta serial do gateway | `/dev/ttyUSB0` |
-| `PORT` | Porta HTTP | `3001` |
-| `FRONTEND_URL` | URL do front (CORS) | `http://localhost:3000` |
-| `SENSOR_NODE_ID` | ID do nó sensor | `47` |
+| Repositório | Descrição |
+|---|---|
+| [`ReDuino-IoT`](https://github.com/tiagodefendi/ReDuino-IoT) | Sketches Arduino (sensor, gateway, atuador) |
+| [`ReDuino-back`](https://github.com/tiagodefendi/ReDuino-back) | Servidor Node.js — **este repositório** |
+| [`ReDuino-Front`](https://github.com/tiagodefendi/ReDuino-Front) | Dashboard Next.js com cena 3D |
 
-### Rodar
+---
+
+## Pré-requisitos
+
+- **Node.js** >= 18
+- **npm** >= 9
+- Arduino Nano (gateway, ID=30) conectado via USB à máquina
+
+---
+
+## Instalação
 
 ```bash
-npm start        # produção
-npm run dev      # desenvolvimento (nodemon)
+git clone https://github.com/tiagodefendi/ReDuino-back.git
+cd ReDuino-back
 ```
 
-### Endpoints
+---
 
-| Método | Rota | Descrição |
-| `GET` | `/api/status` | Estado atual do sistema |
-| `POST` | `/api/toggle` | Liga/desliga sensor |
-| `GET` | `/api/messages` | Histórico de leituras |
-| `GET` | `/api/health` | Healthcheck |
+## Configuração
 
-#### GET /api/status — resposta
-json
-{
-  "active": true,
-  "distance": 85,
-  "alert": "warn",
-  "statusText": "ATENÇÃO",
-  "beepsPerSec": "3",
-  "updatedAt": "2024-01-01T12:00:00.000Z"
-}
+Crie um arquivo `.env` na raiz do projeto (ou edite o `.env` já presente):
 
-#### POST /api/toggle — body (opcional)
-json
-{ "active": true }
-Se o body for omitido, faz toggle do estado atual.
+```env
+# Porta serial onde o Arduino Gateway está conectado
+SERIAL_PORT=/dev/ttyUSB0      # Linux/macOS
+# SERIAL_PORT=COM3            # Windows
+
+# Baud rate da comunicação serial
+BAUD_RATE=19200
+
+# Porta HTTP do servidor
+PORT=3001
+
+# URL do front-end (para liberação de CORS)
+FRONTEND_URL=http://localhost:3000
+
+# ID do nó sensor na rede RF
+SENSOR_NODE_ID=47
+```
+
+> **Dica Windows:** descubra a porta COM correta em Gerenciador de Dispositivos → Portas (COM e LPT).  
+> **Dica Linux:** verifique com `ls /dev/ttyUSB*` ou `ls /dev/ttyACM*` após conectar o Arduino.
 
 ---
 
-## ReDuino-IoT (Arduino)
+## Executando
 
-### Sketches
+```bash
+node index.js
+```
 
-| Arquivo | Placa | Função |
-| `gateway/gateway.ino` | Arduino Nano #1 | Recebe nRF24, repassa serial |
-| `sensor/sensor.ino` | Arduino Nano #2 | HC-SR04 → nRF24 |
-| `atuador/atuador.ino` | Arduino Nano #3 | Buzzer + LED conforme distância |
+O servidor sobe em `http://localhost:3001` (ou na porta definida em `PORT`).
 
-### Dependências Arduino (Library Manager)
 
-- `RF24` by TMRh20
-- `printf.h` (inclusa na RF24)
+## Estrutura do Projeto
 
-### Pinagem
-
-#### Gateway & Sensor & Atuador — nRF24L01
-
-| nRF24 | Arduino Nano |
-| VCC | 3.3V |
-| GND | GND |
-| CE | D7 |
-| CSN | D8 |
-| SCK | D13 |
-| MOSI | D11 |
-| MISO | D12 |
-
-#### Sensor — HC-SR04
-
-| HC-SR04 | Arduino Nano |
-
-| VCC | 5V |
-| GND | GND |
-| TRIG | D3 |
-| ECHO | D4 |
-
-#### Atuador
-
-| Componente | Pino |
-| Buzzer passivo | D5 |
-| LED vermelho | D6 |
-| LED amarelo | D9 |
-| LED verde | D10 |
-
----
-
-## Protocolo de Comunicação
-
-Baseado em CSMA com controle de fluxo RTS/CTS:
-
-Sensor                    Gateway/Atuador
-  │── RTS ──────────────────▶│
-  │◀─────────────────── CTS ─│
-  │── DATA ─────────────────▶│
-  │◀─────────────────── ACK ─│
-
-- Checksum de 1 byte (soma dos bytes do cabeçalho + payload)
-- Antes de transmitir, verifica se o canal está livre (`testCarrier`)
-- Timeout de 500ms por etapa, até 3 retransmissões
-
-### Formato do pacote
-
-[ origem(1) | destino(1) | tipo(1) | tamanho(1) | payload(N) | checksum(1) ]
-
-### Identificadores dos nós
-
-| ID | Nó |
-| 47 | Sensor (HC-SR04)
-| 30 | Gateway
-| 26 | Atuador (Buzzer/LED)
-
----
-
-## Integração Front ↔ Back
-
-O frontend faz polling em `/api/status` a cada ~500ms para atualizar a cena 3D e as métricas. O botão de liga/desliga chama `POST /api/toggle`.
-
-Para integrar no `page.tsx`, substitua o slider de simulação por:
-
-```ts
-// Substitui o sliderDist pelo dado real
-useEffect(() => {
-  if (!isActive) return;
-  const id = setInterval(async () => {
-    const res = await fetch('http://localhost:3001/api/status');
-    const data = await res.json();
-    if (data.active && data.distance != null)
-      setSliderDist(data.distance);
-  }, 500);
-  return () => clearInterval(id);
-}, [isActive]);
-
-// Liga/desliga no back junto com o estado local
-const togglePower = useCallback(async () => {
-  setIsActive(v => !v);
-  await fetch('http://localhost:3001/api/toggle', { method: 'POST' });
-}, []);
+```
+ReDuino-back/
+├── src/
+│   ├── config/        # Configurações de serial e ambiente
+│   ├── state/         # Estado global do sistema (distância, alertas)
+│   └── routes/        # Rotas Express (status, toggle, messages, health)
+├── index.js           # Entry point — inicializa serial e Express
+├── package.json
+└── .env
 ```
